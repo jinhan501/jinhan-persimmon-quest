@@ -1,0 +1,1 @@
+window.JINHAN_QR_LOCKS = Object.freeze({"version":1,"requiredStages":[2,3,4,5],"hashes":{"2":"589fae2cffcb3547b0fceada55870ec34e490287ddf7439cdf0d8ecbf63845a0","3":"245bc9c605762f72750a248ae18afcf31925f6036bbc7d00fc7b8a2d417cc6ef","4":"f1b8f8db60278fec6db2290e4d6e5c39aee32dccd2c2eaf026d24be4f29fb97c","5":"d9ce32817d1f327e81aea8cf7e2092c55273376374d4dc500a7b60de390a5559"}});
