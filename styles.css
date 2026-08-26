@@ -6,7 +6,7 @@
   --cream: #fff6df;
   --paper: #fffbef;
   --ink: #392f26;
-  --muted: #7b6b5a;
+  --muted: #67594b;
   --sky: #cfe6de;
   --shadow: 0 14px 36px rgba(72, 55, 34, .16);
 }
@@ -45,7 +45,7 @@ button { touch-action: manipulation; }
 h1 { margin:0; font-size:clamp(2rem, 9vw, 3.1rem); line-height:1.12; letter-spacing:-.04em; }
 h2 { margin:0 0 10px; font-size:1.7rem; line-height:1.2; }
 p { line-height:1.75; }
-.hero-copy { color:var(--muted); max-width:330px; margin:16px auto 24px; }
+.hero-copy { color:var(--muted); max-width:330px; margin:16px auto 24px; font-weight:700; }
 .hero-orchard { width:calc(100% + 16px); max-width:448px; aspect-ratio:4 / 3; overflow:hidden; margin:0 -8px 22px; border:1px solid rgba(255,255,255,.82); border-radius:28px; background:#dceee7; box-shadow:0 14px 30px rgba(58,67,40,.18); }
 .hero-orchard img { display:block; width:100%; height:100%; object-fit:contain; }
 
@@ -59,10 +59,11 @@ p { line-height:1.75; }
 .label { display:block; font-weight:800; margin:0 0 8px; }
 .text-input { width:100%; min-height:54px; padding:13px 16px; border:2px solid #ead8b7; background:white; border-radius:15px; outline:none; color:var(--ink); }
 .text-input:focus { border-color:var(--persimmon); box-shadow:0 0 0 4px rgba(232,110,44,.12); }
-.hint { color:var(--muted); font-size:.86rem; }
+.hint { color:var(--muted); font-size:.86rem; font-weight:700; }
 
 .page-head { padding:18px 4px 14px; }
-.page-head p { margin:5px 0; color:var(--muted); }
+.page-head p { margin:5px 0; color:var(--muted); font-weight:700; }
+.page-head .eyebrow { color:var(--persimmon-dark); font-weight:900; }
 .progress-summary { display:flex; justify-content:space-between; align-items:center; margin:6px 0 18px; }
 .progress-track { height:9px; flex:1; background:rgba(255,255,255,.7); border-radius:9px; overflow:hidden; margin-right:12px; }
 .progress-fill { height:100%; background:linear-gradient(90deg,var(--persimmon),#f0aa39); transition:width .35s; }
@@ -76,7 +77,7 @@ p { line-height:1.75; }
 .stage-no::after { content:""; position:absolute; left:24px; top:-5px; width:7px; height:9px; border-radius:5px; background:#6e7d47; }
 .stage-card.complete .stage-no { color:white; background:#ff922b; border-color:rgba(191,79,17,.2); box-shadow:inset -5px -6px 0 rgba(184,68,14,.12),0 5px 9px rgba(113,62,26,.18); }
 .stage-title { font-weight:900; display:block; }
-.stage-desc { color:var(--muted); font-size:.82rem; margin-top:3px; display:block; }
+.stage-desc { color:var(--muted); font-size:.82rem; margin-top:3px; display:block; font-weight:700; }
 .stage-state { font-size:1.25rem; }
 .stage-qr-label { display:inline-flex; align-items:center; min-height:28px; padding:4px 8px; border-radius:999px; color:white; background:var(--persimmon); font-size:.72rem; font-weight:900; white-space:nowrap; }
 
@@ -84,7 +85,7 @@ p { line-height:1.75; }
 .qr-stage-badge { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px; border-radius:17px; background:rgba(72,107,53,.09); }
 .qr-stage-badge > span { display:grid; place-items:center; flex:0 0 auto; width:48px; height:48px; border-radius:50%; color:white; background:var(--persimmon); font-size:1.25rem; font-weight:900; }
 .qr-stage-badge strong, .qr-stage-badge small { display:block; }
-.qr-stage-badge small { margin-top:3px; color:var(--muted); }
+.qr-stage-badge small { margin-top:3px; color:var(--muted); font-weight:700; }
 .qr-reader { position:relative; min-height:230px; overflow:hidden; display:grid; place-items:center; border:2px dashed #d9a85c; border-radius:20px; background:linear-gradient(145deg,#26372c,#14221a); color:white; }
 .qr-reader:empty::before { content:"相機預覽將顯示在這裡"; color:rgba(255,255,255,.76); font-size:.86rem; font-weight:800; }
 .qr-reader video, .qr-reader canvas { max-width:100% !important; border-radius:17px; }
@@ -94,7 +95,7 @@ p { line-height:1.75; }
 .qr-status.error { color:#8f351f; background:#fff0e9; border:2px solid #d7795f; }
 .qr-actions { margin-top:8px; }
 .qr-file-button { cursor:pointer; }
-.qr-help { display:grid; gap:4px; margin-top:16px; padding-top:14px; border-top:1px solid #ead8b7; color:var(--muted); font-size:.84rem; line-height:1.6; }
+.qr-help { display:grid; gap:4px; margin-top:16px; padding-top:14px; border-top:1px solid #ead8b7; color:var(--muted); font-size:.84rem; font-weight:700; line-height:1.6; }
 .qr-help strong { color:var(--leaf-dark); }
 .visually-hidden { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
 
@@ -153,7 +154,7 @@ p { line-height:1.75; }
 .process-message strong { display:block; font-size:1.05rem; line-height:1.55; }
 .weather-copy { padding:18px 20px 16px; }
 .weather-copy h3 { margin:3px 0 8px; font-size:1.2rem; }
-.weather-copy p { margin:0; color:var(--muted); font-size:.92rem; }
+.weather-copy p { margin:0; color:var(--muted); font-size:.92rem; font-weight:700; }
 .tray-wrap { position:relative; min-height:256px; display:grid; place-items:center; margin:8px 0 2px; }
 .drying-tray { position:relative; width:238px; height:238px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:3px; place-items:center; padding:25px; border:8px double #929a9d; border-radius:50%; background-color:#d7dcdb; background-image:linear-gradient(rgba(102,111,113,.46) 1px,transparent 1px),linear-gradient(90deg,rgba(102,111,113,.46) 1px,transparent 1px); background-size:11px 11px; box-shadow:inset 0 0 0 3px #f4f6f5,0 12px 24px rgba(51,49,37,.2); }
 .drying-tray::after { content:"白鐵網狀圓盤"; position:absolute; right:-20px; bottom:-18px; padding:5px 9px; border-radius:9px; color:#516064; background:#eef2ef; border:1px solid #aab2b1; font-size:.7rem; font-weight:900; }
@@ -212,11 +213,29 @@ p { line-height:1.75; }
 .effect-btn { min-height:48px; padding:8px 5px; border:2px solid #ead8b7; border-radius:13px; background:white; color:var(--ink); font-size:.78rem; line-height:1.25; font-weight:900; }
 .effect-btn.active { color:white; border-color:var(--persimmon); background:var(--persimmon); }
 .photo-placeholder { font-size:3.7rem; }
-.photo-caption { margin:12px 0 0; color:var(--muted); }
+.photo-caption { margin:12px 0 0; color:var(--muted); font-weight:700; }
 
-.end-badge { width:128px; height:128px; display:grid; place-items:center; margin:14px auto 22px; color:white; background:var(--persimmon); border-radius:50%; font-size:3.8rem; box-shadow:0 0 0 12px rgba(232,110,44,.14), var(--shadow); }
-.certificate { background:#fffaf0; border:2px solid #e1bd75; border-radius:22px; padding:20px; margin:18px 0; text-align:center; }
-.certificate strong { display:block; color:var(--persimmon-dark); font-size:1.45rem; margin:6px 0; }
+.end-screen { padding-bottom:12px; }
+.award-hero { justify-content:flex-start; padding:18px 2px 30px; }
+.award-certificate { position:relative; width:100%; overflow:hidden; padding:22px 24px 28px; border:8px double #c89b45; border-radius:18px; background:linear-gradient(rgba(255,252,238,.97),rgba(255,247,218,.98)),radial-gradient(circle at center,#fff 0 35%,transparent 36%); box-shadow:inset 0 0 0 2px #fff,0 15px 34px rgba(83,59,27,.2); text-align:center; }
+.award-certificate::before,.award-certificate::after { content:"❖"; position:absolute; top:14px; color:#c47731; font-size:1.35rem; }
+.award-certificate::before { left:17px; }
+.award-certificate::after { right:17px; }
+.award-logo { width:148px; height:42px; margin:0 auto 12px; display:grid; place-items:center; }
+.award-logo img { display:block; width:100%; height:100%; object-fit:contain; mix-blend-mode:multiply; }
+.award-title { margin:0 0 20px; color:#6e421f; font-family:"DFKai-SB","BiauKai","KaiTi","STKaiti","Microsoft JhengHei",sans-serif; font-size:clamp(2rem,9vw,2.8rem); letter-spacing:.12em; }
+.award-lead { margin:0; color:var(--muted); font-weight:800; }
+.award-name { display:block; width:82%; margin:8px auto 14px; padding:2px 8px 8px; color:var(--persimmon-dark); border-bottom:2px solid #d7b96f; font-size:2rem; letter-spacing:.08em; }
+.award-copy { display:grid; gap:4px; margin:0 auto; color:#45372b; font-weight:700; line-height:1.72; text-align:left; }
+.award-copy span { display:block; }
+.award-footer { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-top:24px; padding-top:16px; border-top:1px solid rgba(182,138,66,.38); text-align:left; }
+.award-footer span,.award-footer small { display:block; color:var(--muted); font-size:.72rem; font-weight:700; }
+.award-footer strong { display:block; margin:3px 0; color:var(--leaf-dark); font-size:.9rem; }
+.award-seal { flex:0 0 auto; display:grid; place-items:center; width:66px; height:66px; color:#a83f29; border:3px double #a83f29; border-radius:50%; font-family:"DFKai-SB","BiauKai","KaiTi","STKaiti",serif; font-size:1.24rem; font-weight:900; letter-spacing:.08em; transform:rotate(-7deg); }
+.award-comment { position:relative; width:100%; min-height:178px; display:flex; flex-direction:column; justify-content:center; margin:18px 0 20px; padding:38px 20px 20px; overflow:hidden; border:2px solid rgba(183,126,48,.5); border-radius:20px; background-image:linear-gradient(rgba(255,250,230,.38),rgba(255,250,230,.38)),url("assets/award-comment-bg-v1.webp"); background-position:center; background-size:cover; box-shadow:0 10px 24px rgba(83,59,27,.14); }
+.award-comment-label { position:absolute; top:0; left:50%; transform:translateX(-50%); min-width:132px; padding:6px 14px 7px; color:white; background:var(--persimmon-dark); border-radius:0 0 14px 14px; font-size:.78rem; font-weight:900; letter-spacing:.12em; }
+.award-comment p { position:relative; z-index:1; margin:0; color:#29452c; font-family:"Noto Serif TC","Songti TC","PMingLiU","Microsoft JhengHei",serif; font-size:1.02rem; font-weight:900; line-height:1.72; text-shadow:0 1px 0 rgba(255,255,255,.95),0 0 8px rgba(255,250,230,.9); }
+.award-comment small { position:relative; z-index:1; display:block; margin-top:13px; padding:5px 7px; color:#4b4638; background:rgba(255,252,239,.74); border-radius:8px; font-family:"Noto Serif TC","Songti TC","PMingLiU","Microsoft JhengHei",serif; font-size:.68rem; font-weight:700; letter-spacing:.035em; }
 .toast { position:fixed; z-index:10; left:50%; bottom:26px; transform:translate(-50%,18px); width:max-content; max-width:calc(100% - 36px); padding:11px 16px; border-radius:14px; background:#263c2a; color:white; opacity:0; pointer-events:none; transition:.25s; box-shadow:var(--shadow); }
 .toast.show { opacity:1; transform:translate(-50%,0); }
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }

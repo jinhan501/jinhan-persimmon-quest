@@ -1,7 +1,7 @@
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const STORAGE_KEY = 'jinhan-quest-v2';
-const defaultState = { name: '', completed: [], photo: false, qrUnlocked: [] };
+const defaultState = { name: '', completed: [], photo: false, qrUnlocked: [], awardCommentIndex: null, awardCompletedAt: '' };
 const qrConfig = window.JINHAN_QR_LOCKS || { requiredStages: [2, 3, 4, 5], hashes: {} };
 const qrRequiredStages = new Set(qrConfig.requiredStages || [2, 3, 4, 5]);
 let state = loadState();
@@ -56,6 +56,20 @@ const stages = [
   { id: 4, title: '九降風曬柿餅', desc: '掌握陽光、風與時間', icon: '🌬️' },
   { id: 5, title: '柿子小學堂', desc: '完成五題，成為小小懂柿長', icon: '🔎' },
   { id: 6, title: '好柿留影', desc: '留下今日農園回憶', icon: '📷' }
+];
+const awardComments = [
+  '一顆柿餅的完成，連結了產地、季節、農人與餐桌，這就是食農教育最真實的一課。',
+  '從採收到加工，你已認識新埔柿餅從土地走向餐桌的旅程。',
+  '看懂柿子的品種與加工方式，也更懂得珍惜在地農產與農人手藝。',
+  '跟著九降風學做柿餅，也把新埔的風土與飲食文化一起帶回家。',
+  '太陽、東北季風與濕度共同影響柿餅；觀察自然，就是環境教育的開始。',
+  '懂得看天、看風、看果實，就是學習與環境共生的農業智慧。',
+  '五色鳥、柿子與農園共享同一片土地，友善守護才能讓生態長久延續。',
+  '大墩山的地形、九降風的氣候與農人的經驗，共同成就新埔柿餅。',
+  '從金黃柿海看見的，不只是風景，更是土地、農村文化與季節變化。',
+  '選擇在地、認識產季、珍惜食物，從一顆柿子開始實踐永續生活。',
+  '每一道農產加工，都藏著減少浪費、延長保存與善用自然資源的智慧。',
+  '每一顆金黃柿餅，都是陽光、九降風與農人共同完成的風土作品。'
 ];
 const varietyQuestionPool = [
   {
@@ -147,7 +161,19 @@ function loadState() {
   catch { return { ...defaultState }; }
 }
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function complete(id) { if (!state.completed.includes(id)) state.completed.push(id); saveState(); }
+function awardHash(value) {
+  let hash = 2166136261;
+  for (const char of value) { hash ^= char.codePointAt(0); hash = Math.imul(hash, 16777619); }
+  return hash >>> 0;
+}
+function complete(id) {
+  if (!state.completed.includes(id)) state.completed.push(id);
+  if (id === 6 && !Number.isInteger(state.awardCommentIndex)) {
+    state.awardCompletedAt = new Date().toISOString();
+    state.awardCommentIndex = awardHash(`${state.name}|${state.awardCompletedAt.slice(0,10)}`) % awardComments.length;
+  }
+  saveState();
+}
 function isSequenceReady(id) { return id === 1 || state.completed.includes(id - 1); }
 function isQrUnlocked(id) { return !qrRequiredStages.has(id) || state.qrUnlocked.includes(id) || state.completed.includes(id); }
 function isUnlocked(id) { return isSequenceReady(id) && isQrUnlocked(id); }
@@ -238,10 +264,15 @@ function varietyQuiz() {
   return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第五關・柿子小學堂</p><h2>準備好成為懂柿長了嗎？</h2><p>完成五題，成為小小懂柿長。</p></div><div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:${(varietyIndex + 1) / varietyQuestions.length * 100}%"></div></div><strong>${varietyIndex + 1}/${varietyQuestions.length}</strong></div><div class="card"><div class="question">${q.question}</div><div class="answers">${q.answers.map((a,i) => `<button class="answer" data-variety-answer="${i}">${String.fromCharCode(65+i)}　${a}</button>`).join('')}</div><div id="variety-feedback" class="feedback"></div><button id="variety-next" class="btn btn-primary" hidden>${varietyIndex === varietyQuestions.length - 1 ? '完成柿子小學堂 →' : '下一題 →'}</button></div></section>`;
 }
 function photoScreen() {
-  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第六關・好柿留影</p><h2>留下今天的農園回憶</h2><p>選擇照片並套用金漢相框。照片只在這台裝置處理，不會上傳。</p></div><div class="card"><label class="upload-zone" for="photo-input"><input id="photo-input" type="file" accept="image/*" capture="environment"><div id="photo-content"><div class="photo-placeholder">📷</div><strong>點一下拍照或選擇照片</strong><p class="photo-caption">直式與橫式照片都會自動套用合適版型</p></div></label><div id="effect-controls" hidden><div class="effect-picker" aria-label="選擇相框樣式"><button class="effect-btn active" data-effect="golden">金黃柿海</button><button class="effect-btn" data-effect="wind">九降風連峰</button><button class="effect-btn" data-effect="postcard">農園明信片</button></div></div><div class="stack" style="margin-top:16px"><button id="photo-download" class="btn btn-secondary" disabled>下載特效照片</button><button id="photo-share" class="btn btn-secondary" disabled>分享照片</button><button id="photo-complete" class="btn btn-primary" disabled>完成第六關 →</button></div></div></section>`;
+  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第六關・好柿留影</p><h2>留下今天的農園回憶</h2><p>選擇照片並套用金漢相框。照片只在這台裝置處理，不會上傳。</p></div><div class="card"><label class="upload-zone" for="photo-input"><input id="photo-input" type="file" accept="image/*" capture="environment"><div id="photo-content"><div class="photo-placeholder">📷</div><strong>點一下拍照或選擇照片</strong><p class="photo-caption">直式與橫式照片都會自動套用合適版型</p></div></label><div id="effect-controls" hidden><div class="effect-picker" aria-label="選擇相框樣式"><button class="effect-btn active" data-effect="golden">金黃柿海</button><button class="effect-btn" data-effect="wind">九降風連峰</button><button class="effect-btn" data-effect="postcard">農園明信片</button></div></div><div class="stack" style="margin-top:16px"><button id="photo-share" class="btn btn-secondary" disabled>分享／儲存照片</button><button id="photo-complete" class="btn btn-primary" disabled>完成第六關 →</button></div></div></section>`;
 }
 function endScreen() {
-  return `<section class="screen">${topbar('map')}<div class="hero"><div class="end-badge">🏆</div><p class="eyebrow">六關全部完成</p><h1>好柿達人<br>誕生！</h1><div class="certificate"><span>金漢柿餅教育農園 頒發</span><strong>${escapeHtml(state.name)}</strong><span>完成「跟著九降風做柿餅」數位闖關</span></div><p class="hero-copy">柿子從採收到削皮、日曬、風乾與品種辨識，每一步都藏著農人的經驗與新埔的風土。</p><div class="stack">${action('回到闖關地圖', 'map')}${action('再玩一次', 'home', true)}</div></div></section>`;
+  const completedAt = state.awardCompletedAt ? new Date(state.awardCompletedAt) : new Date();
+  const awardDate = new Intl.DateTimeFormat('zh-TW', { year:'numeric', month:'long', day:'numeric' }).format(completedAt);
+  const fallbackIndex = awardHash(`${state.name}|${completedAt.toISOString().slice(0,10)}`) % awardComments.length;
+  const commentIndex = Number.isInteger(state.awardCommentIndex) ? state.awardCommentIndex : fallbackIndex;
+  const awardComment = awardComments[commentIndex % awardComments.length];
+  return `<section class="screen end-screen">${topbar('map')}<div class="hero award-hero"><div class="award-certificate"><div class="award-logo"><img src="assets/jinhan-calligraphy-logo.webp" alt="金漢柿餅"></div><h1 class="award-title">好柿達人獎狀</h1><p class="award-lead">恭喜</p><strong class="award-name">${escapeHtml(state.name)}</strong><div class="award-copy"><span>完成「跟著九降風做柿餅」數位闖關</span><span>認識從採收、削皮、日曬風乾，</span><span>到品種辨識的農園智慧。</span><span>特頒此狀，以資鼓勵。</span></div><div class="award-footer"><div><span>頒發單位</span><strong>金漢柿餅教育農園</strong><small>${awardDate}</small></div><div class="award-seal" aria-label="特優認證">特優</div></div></div><aside class="award-comment" aria-label="好柿學習評語"><span class="award-comment-label">好柿學習評語</span><p>${awardComment}</p><small>金漢柿餅教育農園 × 新竹縣大墩山休閒農業區</small></aside><div class="stack">${action('回到闖關地圖', 'map')}${action('再玩一次', 'home', true)}</div></div></section>`;
 }
 function escapeHtml(value='') { return value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function render() {
@@ -270,7 +301,6 @@ function bind() {
   document.querySelector('#drying-complete')?.addEventListener('click', () => { complete(4); resetDrying(false); go('map'); });
   document.querySelector('#photo-input')?.addEventListener('change', previewPhoto);
   app.querySelectorAll('[data-effect]').forEach(el => el.addEventListener('click', () => selectEffect(el.dataset.effect)));
-  document.querySelector('#photo-download')?.addEventListener('click', downloadPhoto);
   document.querySelector('#photo-share')?.addEventListener('click', sharePhoto);
   document.querySelector('#photo-complete')?.addEventListener('click', () => { complete(6); go('end'); });
   document.querySelector('#qr-camera-start')?.addEventListener('click', startQrCamera);
@@ -336,13 +366,85 @@ async function scanQrFile(event) {
   try {
     if (qrScannerRunning) await stopQrScanner(false);
     const scanner = createQrScanner();
-    const decodedText = await scanner.scanFile(file, true);
+    let decodedText = '';
+    try {
+      decodedText = await scanner.scanFile(file, true);
+    } catch {
+      setQrStatus('正在加強圖片亮度與裁切範圍，請稍候…');
+      decodedText = await scanQrFileWithFallbacks(file, scanner);
+    }
+    if (!decodedText) throw new Error('QR_NOT_FOUND');
     await handleQrResult(decodedText);
   } catch (error) {
     if (!qrBusy) setQrStatus('這張圖片沒有辨識到 QR Code。請選擇較清楚、完整的圖片再試。', 'error');
   } finally {
     event.target.value = '';
   }
+}
+async function scanQrFileWithFallbacks(file, scanner) {
+  const nativeResult = await scanQrWithBarcodeDetector(file);
+  if (nativeResult) return nativeResult;
+  const variants = await createQrImageVariants(file);
+  for (const variant of variants) {
+    try { return await scanner.scanFile(variant, false); } catch {}
+  }
+  return '';
+}
+async function scanQrWithBarcodeDetector(file) {
+  if (typeof BarcodeDetector === 'undefined' || typeof createImageBitmap === 'undefined') return '';
+  let bitmap;
+  try {
+    const detector = new BarcodeDetector({ formats:['qr_code'] });
+    bitmap = await createImageBitmap(file, { imageOrientation:'from-image' });
+    const codes = await detector.detect(bitmap);
+    return codes.find(code => code.rawValue)?.rawValue || '';
+  } catch {
+    return '';
+  } finally {
+    bitmap?.close?.();
+  }
+}
+async function createQrImageVariants(file) {
+  const image = await loadQrImage(file);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const shortSide = Math.min(width, height);
+  const square = shortSide * .84;
+  const crops = [
+    { x:0, y:0, width, height, max:1800, contrast:false },
+    { x:(width-square)/2, y:(height-square)/2, width:square, height:square, max:1500, contrast:false },
+    { x:(width-square)/2, y:Math.max(0, Math.min(height-square, height*.55-square/2)), width:square, height:square, max:1500, contrast:true },
+  ];
+  const variants = [];
+  for (const crop of crops) variants.push(await renderQrVariant(image, crop));
+  return variants;
+}
+function loadQrImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('IMAGE_LOAD_FAILED')); };
+    image.src = url;
+  });
+}
+function renderQrVariant(image, crop) {
+  return new Promise((resolve, reject) => {
+    const scale = Math.min(1, crop.max / Math.max(crop.width, crop.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(crop.width * scale));
+    canvas.height = Math.max(1, Math.round(crop.height * scale));
+    const context = canvas.getContext('2d', { willReadFrequently:true });
+    if (!context) return reject(new Error('CANVAS_UNAVAILABLE'));
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    if (crop.contrast) context.filter = 'grayscale(1) contrast(1.8)';
+    context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(blob => {
+      if (!blob) return reject(new Error('IMAGE_CONVERSION_FAILED'));
+      resolve(new File([blob], 'qr-enhanced.png', { type:'image/png' }));
+    }, 'image/png');
+  });
 }
 async function sha256(value) {
   const bytes = new TextEncoder().encode(value);
@@ -616,14 +718,14 @@ function previewPhoto(e) {
     const format = landscape ? '橫式 4:3・適合團體照' : '直式 4:5・適合人物照';
     document.querySelector('#photo-content').innerHTML = `<canvas id="photo-canvas" class="photo-canvas" ${size} data-orientation="${landscape ? 'landscape' : 'portrait'}" aria-label="${format}特效照片預覽"></canvas><p class="photo-caption"><strong>${format}</strong><br>點選下方樣式即可更換相框</p>`;
     document.querySelector('#effect-controls').hidden = false;
-    ['#photo-download','#photo-share','#photo-complete'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=true; });
+    ['#photo-share','#photo-complete'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=true; });
     state.photo = true; saveState(); drawPhoto();
     const orientation = landscape ? 'landscape' : 'portrait';
     loadPhotoFrame(photoEffect, orientation)
       .then(() => {
         if (photoImage !== image) return;
         drawPhoto();
-        ['#photo-download','#photo-share','#photo-complete'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=false; });
+        ['#photo-share','#photo-complete'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=false; });
         preloadOtherPhotoFrames(orientation);
       })
       .catch(() => notify('相框素材載入失敗，請重新整理後再試'));
@@ -638,12 +740,12 @@ function selectEffect(effect) {
   drawPhoto();
   const orientation = document.querySelector('#photo-canvas')?.dataset.orientation;
   if (orientation) {
-    ['#photo-download','#photo-share'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=true; });
+    ['#photo-share'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=true; });
     loadPhotoFrame(effect, orientation)
       .then(() => {
         if (photoEffect !== effect) return;
         drawPhoto();
-        ['#photo-download','#photo-share'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=false; });
+        ['#photo-share'].forEach(id => { const button=document.querySelector(id); if (button) button.disabled=false; });
       })
       .catch(() => notify('這款相框載入失敗，請再試一次'));
   }
@@ -689,14 +791,10 @@ function drawPostcardDetails(ctx,w,h) {
   ctx.fillStyle='#6d533e'; ctx.font=`700 ${18*u}px Microsoft JhengHei`; ctx.fillText(`新竹新埔　｜　${date}　｜　${state.name || '小小懂柿長'}`,w/2,top+footer*.76);
 }
 function canvasBlob() { return new Promise(resolve => document.querySelector('#photo-canvas')?.toBlob(resolve,'image/jpeg',.92)); }
-async function downloadPhoto() {
-  const blob = await canvasBlob(); if (!blob) return;
-  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `金漢好柿留影-${Date.now()}.jpg`; link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),1000);
-}
 async function sharePhoto() {
   const blob = await canvasBlob(); if (!blob) return;
   const file = new File([blob],'金漢好柿留影.jpg',{type:'image/jpeg'});
   if (navigator.canShare?.({files:[file]})) { try { await navigator.share({title:'金漢好柿留影',text:'我完成金漢柿餅教育農園數位闖關！',files:[file]}); } catch {} }
-  else { notify('此瀏覽器不支援直接分享，請先下載照片'); }
+  else { notify('這個瀏覽器不支援照片分享，請改用 Safari 或 Chrome 開啟網站'); }
 }
 render();
