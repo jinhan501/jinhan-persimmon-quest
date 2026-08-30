@@ -1,11 +1,16 @@
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const STORAGE_KEY = 'jinhan-quest-v2';
+const TEST_UNLOCK_PASSWORD = 'jinhan';
 const defaultState = { name: '', completed: [], photo: false, qrUnlocked: [], awardCommentIndex: null, awardCompletedAt: '' };
 const qrConfig = window.JINHAN_QR_LOCKS || { requiredStages: [2, 3, 4, 5], hashes: {} };
 const qrRequiredStages = new Set(qrConfig.requiredStages || [2, 3, 4, 5]);
 let state = loadState();
 let route = 'home';
+let selectedMapStage = null;
+let transitionStage = null;
+let transitionDestination = 'map';
+let transitionTimer = null;
 let qrTargetStage = null;
 let qrScanner = null;
 let qrScannerRunning = false;
@@ -51,7 +56,7 @@ function buildDryingSequence() {
 
 const stages = [
   { id: 1, title: '柿餅在哪裡加工？', desc: '認識柿餅的家鄉', icon: '🧭' },
-  { id: 2, title: '採收好柿子', desc: '眼明手快採成熟果實', icon: '🧺' },
+  { id: 2, title: '採收好柿子', desc: '眼明手快採成熟果實', icon: '🪢' },
   { id: 3, title: '旋轉削皮', desc: '體驗老師傅的好手藝', icon: '🌀' },
   { id: 4, title: '九降風曬柿餅', desc: '掌握陽光、風與時間', icon: '🌬️' },
   { id: 5, title: '柿子小學堂', desc: '完成五題，成為小小懂柿長', icon: '🔎' },
@@ -191,6 +196,8 @@ function go(next) {
   navigate(next);
 }
 function navigate(next) {
+  clearTimeout(transitionTimer);
+  transitionTimer = null;
   clearInterval(harvest.timer);
   if (route === 'qr' && next !== 'qr') void stopQrScanner();
   route = next;
@@ -201,6 +208,31 @@ function notify(message) { toast.textContent = message; toast.classList.add('sho
 function topbar(back = 'map') { return `<header class="topbar"><div class="brand-mini"><span class="brand-fruit" aria-hidden="true"></span>金漢・九降風柿旅</div>${back ? `<button class="icon-btn" data-go="${back}" aria-label="返回">←</button>` : ''}</header>`; }
 function action(label, target, secondary = false) { return `<button class="btn ${secondary ? 'btn-secondary' : 'btn-primary'}" data-go="${target}">${label}</button>`; }
 
+function currentMapStage() {
+  return stages.find(stage => !state.completed.includes(stage.id))?.id || 6;
+}
+function selectMapStage(id) {
+  selectedMapStage = id;
+  render();
+}
+function startStageTransition(id, destination = id === 6 ? 'end' : 'map') {
+  complete(id);
+  transitionStage = id;
+  transitionDestination = destination;
+  route = 'transition';
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  render();
+  const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 300 : 3000;
+  transitionTimer = setTimeout(finishStageTransition, duration);
+}
+function finishStageTransition() {
+  if (route !== 'transition') return;
+  clearTimeout(transitionTimer);
+  transitionTimer = null;
+  selectedMapStage = Math.min(6, (transitionStage || 1) + 1);
+  navigate(transitionDestination);
+}
+
 function home() {
   return `<section class="screen">${topbar('')}<div class="hero"><div class="hero-orchard"><img src="assets/cover-drying-yard.webp" alt="一墩接著一墩的大墩山連峰，以及金漢柿餅金黃曬場" fetchpriority="high"></div><p class="eyebrow">新竹新埔・大墩山的九降風</p><h1>跟著風<br>去做柿餅</h1><p class="hero-copy">闖過六道體驗關卡，認識一顆柿子如何在陽光與九降風中，變成甜蜜的金黃柿餅。</p><div class="stack">${action(state.name ? `繼續冒險，${escapeHtml(state.name)}` : '開始遊戲', state.name ? 'map' : 'name')}${state.name ? `<button class="btn btn-secondary" id="restart">重新開始</button>` : ''}</div></div></section>`;
 }
@@ -209,30 +241,38 @@ function nameScreen() {
 }
 function mapScreen() {
   const pct = state.completed.length / 6 * 100;
-  const stageCards = stages.map(s => {
+  const selectedId = selectedMapStage || currentMapStage();
+  const stageNodes = stages.map(s => {
     const completed = state.completed.includes(s.id);
     const sequenceReady = isSequenceReady(s.id);
     const qrLocked = sequenceReady && qrRequiredStages.has(s.id) && !isQrUnlocked(s.id);
-    const classes = ['stage-card', completed ? 'complete' : '', qrLocked ? 'qr-ready' : ''].filter(Boolean).join(' ');
-    const status = completed ? '✓' : qrLocked ? '<span class="stage-qr-label">掃碼</span>' : sequenceReady ? '›' : '🔒';
-    const desc = qrLocked ? `📍 到達指定位置，掃描第 ${s.id} 關 QR Code` : s.desc;
-    return `<button class="${classes}" data-stage="${s.id}" ${sequenceReady ? '' : 'disabled'}><span class="stage-no">${s.id}</span><span><span class="stage-title">${s.icon} ${s.title}</span><span class="stage-desc">${desc}</span></span><span class="stage-state">${status}</span></button>`;
+    const selected = selectedId === s.id;
+    const classes = ['map-stop', `map-stop-${s.id}`, completed ? 'complete' : '', sequenceReady ? 'sequence-ready' : 'locked', qrLocked ? 'qr-ready' : '', selected ? 'selected' : ''].filter(Boolean).join(' ');
+    const status = completed ? '已完成' : qrLocked ? '前往指定位置掃描 QR Code' : sequenceReady ? '可以開始挑戰' : `先完成第 ${s.id - 1} 關`;
+    const buttonLabel = completed ? '再次體驗' : qrLocked ? '前往掃碼' : '進入關卡';
+    return `<div class="${classes}" role="listitem"><button class="map-fruit" data-map-node="${s.id}" aria-label="第 ${s.id} 關${completed ? '，已完成' : sequenceReady ? '，目前可挑戰' : '，尚未解鎖'}" aria-expanded="${selected}"><span>${s.id}</span>${completed ? '<i class="map-check">✓</i>' : !sequenceReady ? '<i class="map-lock">🔒</i>' : qrLocked ? '<i class="map-pin">掃碼</i>' : ''}</button>${selected ? `<div class="map-stage-card"><small>第 ${s.id} 關</small><strong>${s.icon} ${s.title}</strong><span>${status}</span><button class="map-stage-action" data-stage="${s.id}" ${sequenceReady ? '' : 'disabled'}>${buttonLabel} →</button></div>` : ''}</div>`;
   }).join('');
-  return `<section class="screen">${topbar('home')}<div class="page-head"><p class="eyebrow">金黃柿海冒險地圖</p><h2>${escapeHtml(state.name)}，來探索柿餅好吃的祕密吧！</h2><p>依序完成六關；第二至第五關需到指定位置掃描 QR Code。</p></div><div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><strong>${state.completed.length}/6</strong></div><div class="stage-list">${stageCards}</div>${state.completed.length === 6 ? action('前往完成頁', 'end') : ''}</section>`;
+  return `<section class="screen map-screen">${topbar('home')}<div class="page-head map-head"><p class="eyebrow">金黃柿海冒險地圖</p><h2>${escapeHtml(state.name)}，來探索柿餅好吃的祕密吧！</h2><p>沿著九降風前進，點選柿子查看下一個任務。</p></div><div class="progress-summary map-progress"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><strong>${state.completed.length}/6</strong></div><div class="adventure-map" role="list" aria-label="六關冒險地圖"><svg class="map-route" viewBox="0 0 100 600" preserveAspectRatio="none" aria-hidden="true"><path d="M18 42 C58 58 84 98 72 138 S17 185 25 234 S88 286 74 336 S16 384 25 432 S84 484 70 534" /></svg>${stageNodes}<div class="map-start" aria-hidden="true">起點</div><div class="map-finish" aria-hidden="true">好柿達人</div></div>${state.completed.length === 6 ? `<div class="map-end-action">${action('前往完成頁', 'end')}</div>` : ''}</section>`;
+}
+
+function transitionScreen() {
+  const stage = stages.find(item => item.id === transitionStage) || stages[0];
+  const finalTrip = stage.id === 6;
+  return `<section class="screen transition-screen"><button id="transition-skip" class="transition-skip" aria-label="略過過場動畫"><span>第 ${stage.id} 關完成！</span><strong>${stage.icon} ${stage.title}</strong><div class="transition-landscape" aria-hidden="true"><div class="transition-sun"></div><div class="transition-wind w1"></div><div class="transition-wind w2"></div><div class="transition-mountain back"></div><div class="transition-mountain front"></div><div class="transition-trail"></div><div class="transition-runner"><img src="assets/persimmon-mascot.png" alt=""></div></div><em>${finalTrip ? '正在前往好柿達人獎狀…' : '正在前往下一站…'}</em><small>點一下即可略過</small></button></section>`;
 }
 function qrUnlockScreen() {
   const stage = stages.find(item => item.id === qrTargetStage);
   if (!stage) return mapScreen();
   const secureNotice = window.isSecureContext
     ? '相機只會用來辨識現場 QR Code，不會拍照或上傳影像。'
-    : '目前不是 HTTPS，手機瀏覽器可能封鎖相機；可先用下方相簿選圖測試。';
-  return `<section class="screen">${topbar('map')}<div class="page-head"><p class="eyebrow">第 ${stage.id} 關・現場解鎖</p><h2>掃描指定位置的 QR Code</h2><p>找到「${stage.title}」的現場標示後再掃描，成功就會自動進入關卡。</p></div><div class="card qr-card"><div class="qr-stage-badge"><span>${stage.id}</span><div><strong>${stage.title}</strong><small>上一關已完成，等待現場驗證</small></div></div><div id="qr-reader" class="qr-reader" aria-label="QR Code 相機預覽"></div><div id="qr-status" class="qr-status" role="status" aria-live="polite">${secureNotice}</div><div class="stack qr-actions"><button id="qr-camera-start" class="btn btn-primary">開啟相機掃描</button><label class="btn btn-secondary qr-file-button" for="qr-file-input">從相簿選擇 QR 圖片</label><input id="qr-file-input" class="visually-hidden" type="file" accept="image/*"><button class="btn btn-secondary" data-go="map">先回到地圖</button></div><div class="qr-help"><strong>掃不到時請檢查：</strong><span>允許瀏覽器使用相機、鏡頭擦乾淨、QR Code 完整入鏡，並保持約 15～30 公分距離。</span></div></div></section>`;
+    : '目前不是 HTTPS，手機瀏覽器可能封鎖相機；也可使用下方快速通關。';
+  return `<section class="screen">${topbar('map')}<div class="page-head"><p class="eyebrow">第 ${stage.id} 關・現場解鎖</p><h2>掃描指定位置的 QR Code</h2><p>找到「${stage.title}」的現場標示後再掃描，成功就會自動進入關卡。</p></div><div class="card qr-card"><div class="qr-stage-badge"><span>${stage.id}</span><div><strong>${stage.title}</strong><small>上一關已完成，等待現場驗證</small></div></div><div id="qr-reader" class="qr-reader" aria-label="QR Code 相機預覽"></div><div id="qr-status" class="qr-status" role="status" aria-live="polite">${secureNotice}</div><div class="stack qr-actions"><button id="qr-camera-start" class="btn btn-primary">開啟相機掃描</button><form id="qr-test-form" class="qr-test-form"><label for="qr-test-password">快速通關：</label><input id="qr-test-password" class="text-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="輸入密碼"><button class="qr-password-submit" type="submit">驗證</button></form><button class="btn btn-secondary" data-go="map">先回到地圖</button></div><div class="qr-help"><strong>掃不到時請檢查：</strong><span>允許瀏覽器使用相機、鏡頭擦乾淨、QR Code 完整入鏡，並保持約 15～30 公分距離。</span></div></div></section>`;
 }
 function quiz() {
   return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第一關・產地問答</p><h2>柿餅在哪裡加工的？</h2><p>柿餅的風土，從認識家鄉開始。</p></div><div class="card"><div class="question">你現在位於哪一個縣市／鄉鎮？</div><div class="answers">${['苗栗縣／公館鄉','新竹縣／新埔鎮','台中市／新社區','嘉義縣／番路鄉'].map((a,i) => `<button class="answer" data-answer="${i}">${String.fromCharCode(65+i)}　${a}</button>`).join('')}</div><div id="feedback" class="feedback"></div><button id="quiz-next" class="btn btn-primary" hidden>完成第一關 →</button></div></section>`;
 }
 function harvestScreen() {
-  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第二關・採收體驗</p><h2>採下 8 顆成熟柿子</h2><p>20 秒內找出橘紅色柿子。小心別把葉子或蟲子放進籃子！</p></div><div class="game-hud"><span>🧺 <b id="score">0</b>/8 顆</span><span>⏱️ <b id="time">20</b> 秒</span></div><div id="orchard" class="orchard-game"><div class="basket" aria-hidden="true"></div></div><button id="harvest-start" class="btn btn-primary" style="margin-top:14px">開始採收</button></section>`;
+  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第二關・採收體驗</p><h2>採下 8 顆成熟柿子</h2><p>20 秒內找出橘紅色柿子。小心別把葉子或蟲子放進網袋！</p></div><div class="game-hud"><span>🪢 網袋 <b id="score">0</b>/8 顆</span><span>⏱️ <b id="time">20</b> 秒</span></div><div id="orchard" class="orchard-game"><div class="basket" aria-label="採收柿子的網袋"></div></div><button id="harvest-start" class="btn btn-primary" style="margin-top:14px">開始採收</button></section>`;
 }
 function peelScreen() {
   return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第三關・削皮體驗</p><h2>旋轉削出一顆好柿子</h2><p>用手指沿著柿子表面來回滑動，均勻削去外皮。</p></div><div class="peel-board"><canvas id="peel-canvas" class="peel-canvas" width="600" height="600" aria-label="柿子削皮觸控區"></canvas><div id="peel-tip" class="peel-tip">從外圈開始，慢慢往中心削</div></div><div class="peel-meter"><div class="progress-track"><div id="peel-fill" class="progress-fill" style="width:0%"></div></div><span id="peel-status" class="peel-status">0%</span></div><div class="peel-tools"><button id="peel-reset" class="btn btn-secondary">重新削皮</button><button id="peel-assist" class="btn btn-secondary">點按輔助削皮</button></div><div id="peel-success" class="peel-success">削皮完成！果肉露出得很均勻。</div><button id="peel-complete" class="btn btn-primary" style="margin-top:14px" hidden>完成第三關 →</button></section>`;
@@ -276,35 +316,37 @@ function endScreen() {
 }
 function escapeHtml(value='') { return value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function render() {
-  const views = { home, name: nameScreen, map: mapScreen, qr: qrUnlockScreen, stage1: quiz, stage2: harvestScreen, stage3: peelScreen, stage4: dryingScreen, stage5: varietyQuiz, stage6: photoScreen, end: endScreen };
+  const views = { home, name: nameScreen, map: mapScreen, transition: transitionScreen, qr: qrUnlockScreen, stage1: quiz, stage2: harvestScreen, stage3: peelScreen, stage4: dryingScreen, stage5: varietyQuiz, stage6: photoScreen, end: endScreen };
   app.innerHTML = (views[route] || home)();
   bind();
 }
 function bind() {
   app.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
   app.querySelectorAll('[data-stage]').forEach(el => el.addEventListener('click', () => openStage(Number(el.dataset.stage))));
-  app.querySelectorAll('[data-complete]').forEach(el => el.addEventListener('click', () => { complete(Number(el.dataset.complete)); go('map'); }));
+  app.querySelectorAll('[data-map-node]').forEach(el => el.addEventListener('click', () => selectMapStage(Number(el.dataset.mapNode))));
+  app.querySelectorAll('[data-complete]').forEach(el => el.addEventListener('click', () => startStageTransition(Number(el.dataset.complete))));
+  document.querySelector('#transition-skip')?.addEventListener('click', finishStageTransition);
   document.querySelector('#restart')?.addEventListener('click', () => { if (confirm('要清除暱稱與所有闖關進度嗎？')) { state = { ...defaultState }; saveState(); render(); } });
   document.querySelector('#name-form')?.addEventListener('submit', e => { e.preventDefault(); const name = document.querySelector('#nickname').value.trim(); if (!name) return; state.name = name; saveState(); go('map'); });
   app.querySelectorAll('[data-answer]').forEach(el => el.addEventListener('click', answerQuiz));
   app.querySelectorAll('[data-variety-answer]').forEach(el => el.addEventListener('click', answerVariety));
   document.querySelector('#variety-next')?.addEventListener('click', nextVariety);
-  document.querySelector('#quiz-next')?.addEventListener('click', () => { complete(1); go('map'); });
+  document.querySelector('#quiz-next')?.addEventListener('click', () => startStageTransition(1));
   document.querySelector('#harvest-start')?.addEventListener('click', startHarvest);
   if (route === 'stage3') initPeelGame();
   document.querySelector('#peel-reset')?.addEventListener('click', initPeelGame);
   document.querySelector('#peel-assist')?.addEventListener('click', assistPeel);
-  document.querySelector('#peel-complete')?.addEventListener('click', () => { complete(3); go('map'); });
+  document.querySelector('#peel-complete')?.addEventListener('click', () => startStageTransition(3));
   app.querySelectorAll('[data-dry-action]').forEach(el => el.addEventListener('click', answerDrying));
   document.querySelector('#drying-next')?.addEventListener('click', nextDrying);
   document.querySelector('#drying-retry')?.addEventListener('click', resetDrying);
-  document.querySelector('#drying-complete')?.addEventListener('click', () => { complete(4); resetDrying(false); go('map'); });
+  document.querySelector('#drying-complete')?.addEventListener('click', () => { resetDrying(false); startStageTransition(4); });
   document.querySelector('#photo-input')?.addEventListener('change', previewPhoto);
   app.querySelectorAll('[data-effect]').forEach(el => el.addEventListener('click', () => selectEffect(el.dataset.effect)));
   document.querySelector('#photo-share')?.addEventListener('click', sharePhoto);
-  document.querySelector('#photo-complete')?.addEventListener('click', () => { complete(6); go('end'); });
+  document.querySelector('#photo-complete')?.addEventListener('click', () => startStageTransition(6, 'end'));
   document.querySelector('#qr-camera-start')?.addEventListener('click', startQrCamera);
-  document.querySelector('#qr-file-input')?.addEventListener('change', scanQrFile);
+  document.querySelector('#qr-test-form')?.addEventListener('submit', unlockWithTestPassword);
 }
 function setQrStatus(message, type = '') {
   const status = document.querySelector('#qr-status');
@@ -324,11 +366,11 @@ function createQrScanner() {
 async function startQrCamera() {
   const button = document.querySelector('#qr-camera-start');
   if (!window.isSecureContext) {
-    setQrStatus('手機相機需要 HTTPS。請使用手機測試網址，或先用「從相簿選擇 QR 圖片」。', 'error');
+    setQrStatus('手機相機需要 HTTPS。請使用正式網址，或使用下方快速通關。', 'error');
     return;
   }
   if (!navigator.mediaDevices?.getUserMedia) {
-    setQrStatus('這個瀏覽器不支援相機掃描，請改用 Chrome／Safari，或從相簿選擇 QR 圖片。', 'error');
+    setQrStatus('這個瀏覽器不支援相機掃描，請改用 Chrome／Safari；也可使用下方快速通關。', 'error');
     return;
   }
   if (button) button.disabled = true;
@@ -348,103 +390,36 @@ async function startQrCamera() {
     const name = error?.name || '';
     const message = String(error?.message || error || '');
     if (/NotAllowed|Permission|denied/i.test(`${name} ${message}`)) {
-      setQrStatus('相機權限被拒絕。請到瀏覽器網址列旁的權限設定允許相機，再重新整理；也可改用相簿選圖。', 'error');
+      setQrStatus('相機權限被拒絕。請到瀏覽器網址列旁的權限設定允許相機，再重新整理；也可使用下方快速通關。', 'error');
     } else if (/NotFound|DevicesNotFound|Overconstrained/i.test(`${name} ${message}`)) {
-      setQrStatus('找不到可用的相機。請確認其他 App 沒有占用鏡頭，或改用相簿選圖。', 'error');
+      setQrStatus('找不到可用的相機。請確認其他 App 沒有占用鏡頭；也可使用下方快速通關。', 'error');
     } else if (message.includes('QR_LIBRARY_MISSING')) {
       setQrStatus('QR 掃描元件沒有載入，請確認網頁檔案完整後重新整理。', 'error');
     } else {
-      setQrStatus('相機啟動失敗。請重新整理後再試，或改用相簿選擇 QR 圖片。', 'error');
+      setQrStatus('相機啟動失敗。請重新整理後再試；也可使用下方快速通關。', 'error');
     }
     if (button) button.disabled = false;
   }
 }
-async function scanQrFile(event) {
-  const file = event.target.files?.[0];
-  if (!file || qrBusy) return;
-  setQrStatus('正在辨識圖片中的 QR Code…');
-  try {
-    if (qrScannerRunning) await stopQrScanner(false);
-    const scanner = createQrScanner();
-    let decodedText = '';
-    try {
-      decodedText = await scanner.scanFile(file, true);
-    } catch {
-      setQrStatus('正在加強圖片亮度與裁切範圍，請稍候…');
-      decodedText = await scanQrFileWithFallbacks(file, scanner);
-    }
-    if (!decodedText) throw new Error('QR_NOT_FOUND');
-    await handleQrResult(decodedText);
-  } catch (error) {
-    if (!qrBusy) setQrStatus('這張圖片沒有辨識到 QR Code。請選擇較清楚、完整的圖片再試。', 'error');
-  } finally {
-    event.target.value = '';
+async function unlockWithTestPassword(event) {
+  event.preventDefault();
+  if (qrBusy || !qrTargetStage) return;
+  const input = document.querySelector('#qr-test-password');
+  const password = String(input?.value || '').trim().toLowerCase();
+  if (password !== TEST_UNLOCK_PASSWORD) {
+    setQrStatus('通關密碼不正確，請重新輸入。', 'error');
+    input?.focus();
+    input?.select();
+    return;
   }
-}
-async function scanQrFileWithFallbacks(file, scanner) {
-  const nativeResult = await scanQrWithBarcodeDetector(file);
-  if (nativeResult) return nativeResult;
-  const variants = await createQrImageVariants(file);
-  for (const variant of variants) {
-    try { return await scanner.scanFile(variant, false); } catch {}
-  }
-  return '';
-}
-async function scanQrWithBarcodeDetector(file) {
-  if (typeof BarcodeDetector === 'undefined' || typeof createImageBitmap === 'undefined') return '';
-  let bitmap;
-  try {
-    const detector = new BarcodeDetector({ formats:['qr_code'] });
-    bitmap = await createImageBitmap(file, { imageOrientation:'from-image' });
-    const codes = await detector.detect(bitmap);
-    return codes.find(code => code.rawValue)?.rawValue || '';
-  } catch {
-    return '';
-  } finally {
-    bitmap?.close?.();
-  }
-}
-async function createQrImageVariants(file) {
-  const image = await loadQrImage(file);
-  const width = image.naturalWidth || image.width;
-  const height = image.naturalHeight || image.height;
-  const shortSide = Math.min(width, height);
-  const square = shortSide * .84;
-  const crops = [
-    { x:0, y:0, width, height, max:1800, contrast:false },
-    { x:(width-square)/2, y:(height-square)/2, width:square, height:square, max:1500, contrast:false },
-    { x:(width-square)/2, y:Math.max(0, Math.min(height-square, height*.55-square/2)), width:square, height:square, max:1500, contrast:true },
-  ];
-  const variants = [];
-  for (const crop of crops) variants.push(await renderQrVariant(image, crop));
-  return variants;
-}
-function loadQrImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('IMAGE_LOAD_FAILED')); };
-    image.src = url;
-  });
-}
-function renderQrVariant(image, crop) {
-  return new Promise((resolve, reject) => {
-    const scale = Math.min(1, crop.max / Math.max(crop.width, crop.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(crop.width * scale));
-    canvas.height = Math.max(1, Math.round(crop.height * scale));
-    const context = canvas.getContext('2d', { willReadFrequently:true });
-    if (!context) return reject(new Error('CANVAS_UNAVAILABLE'));
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    if (crop.contrast) context.filter = 'grayscale(1) contrast(1.8)';
-    context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(blob => {
-      if (!blob) return reject(new Error('IMAGE_CONVERSION_FAILED'));
-      resolve(new File([blob], 'qr-enhanced.png', { type:'image/png' }));
-    }, 'image/png');
-  });
+  qrBusy = true;
+  const unlockedStage = qrTargetStage;
+  if (!state.qrUnlocked.includes(unlockedStage)) state.qrUnlocked.push(unlockedStage);
+  saveState();
+  setQrStatus(`密碼正確，第 ${unlockedStage} 關已解鎖！`, 'success');
+  await stopQrScanner(false);
+  qrBusy = false;
+  setTimeout(() => openStage(unlockedStage), 350);
 }
 async function sha256(value) {
   const bytes = new TextEncoder().encode(value);
@@ -510,7 +485,7 @@ function answerVariety(e) {
 }
 function nextVariety() {
   if (varietyIndex < varietyQuestions.length - 1) { varietyIndex += 1; render(); }
-  else { complete(5); varietyIndex = 0; varietyQuestions = buildVarietyQuestions(); go('map'); }
+  else { varietyIndex = 0; varietyQuestions = buildVarietyQuestions(); startStageTransition(5); }
 }
 function startHarvest() {
   harvest.score = 0; harvest.time = 20;
@@ -573,7 +548,7 @@ function finishHarvest(won) {
     const done = btn.cloneNode(true);
     done.disabled = false;
     done.textContent = '採收成功！回到地圖 →';
-    done.addEventListener('click', () => go('map'));
+    done.addEventListener('click', () => startStageTransition(2));
     btn.replaceWith(done);
     notify('採到 8 顆成熟柿子！');
   }
