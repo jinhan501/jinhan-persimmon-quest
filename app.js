@@ -733,7 +733,7 @@ function loadPhotoFrame(style, orientation) {
     const image=new Image();
     image.onload=()=>{photoFrameImages[key]=image;resolve(image);};
     image.onerror=error=>{delete photoFramePromises[key];reject(error);};
-    image.src=`assets/photo-frames/${key}.webp?v=3`;
+    image.src=`assets/photo-frames/${key}.webp?v=${style === 'postcard' ? '4' : '3'}`;
     });
   }
   return photoFramePromises[key];
@@ -754,16 +754,6 @@ function drawPhoto() {
   const key=`${photoEffect}-${canvas.dataset.orientation}`;
   const frame=photoFrameImages[key];
   if (frame) ctx.drawImage(frame,0,0,w,h);
-  if (photoEffect === 'postcard' && frame) drawPostcardDetails(ctx,w,h);
-}
-function drawPostcardDetails(ctx,w,h) {
-  const u=Math.min(w,h)/1080;
-  const footer=h*.14, top=h-footer;
-  ctx.fillStyle='rgba(255,249,232,.98)'; ctx.fillRect(36*u,top,w-72*u,footer);
-  ctx.strokeStyle='#aa5433'; ctx.lineWidth=2*u; ctx.beginPath(); ctx.moveTo(44*u,top); ctx.lineTo(w-44*u,top); ctx.stroke();
-  ctx.textAlign='center'; ctx.fillStyle='#345133'; ctx.font=`900 ${28*u}px Microsoft JhengHei`; ctx.fillText('金漢・九降風柿旅',w/2,top+footer*.48);
-  const date=new Intl.DateTimeFormat('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  ctx.fillStyle='#6d533e'; ctx.font=`700 ${18*u}px Microsoft JhengHei`; ctx.fillText(`新竹新埔　｜　${date}　｜　${state.name || '小小懂柿長'}`,w/2,top+footer*.76);
 }
 function canvasBlob() { return new Promise(resolve => document.querySelector('#photo-canvas')?.toBlob(resolve,'image/jpeg',.92)); }
 async function sharePhoto() {
