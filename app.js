@@ -2,7 +2,8 @@ const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const STORAGE_KEY = 'jinhan-quest-v2';
 const TEST_UNLOCK_PASSWORD = 'jinhan';
-const defaultState = { name: '', completed: [], photo: false, qrUnlocked: [], awardCommentIndex: null, awardCompletedAt: '' };
+const defaultState = { name: '', completed: [], photo: false, qrUnlocked: [], awardCommentIndex: null, awardCompletedAt: '', statsRun: null };
+function freshState() { return { ...defaultState, completed: [], qrUnlocked: [] }; }
 const qrConfig = window.JINHAN_QR_LOCKS || { requiredStages: [2, 3, 4, 5], hashes: {} };
 const qrRequiredStages = new Set(qrConfig.requiredStages || [2, 3, 4, 5]);
 let state = loadState();
@@ -155,15 +156,15 @@ function loadState() {
   try {
     const current = localStorage.getItem(STORAGE_KEY);
     if (current) {
-      const saved = { ...defaultState, ...JSON.parse(current) };
+      const saved = { ...freshState(), ...JSON.parse(current) };
       saved.completed = [...new Set((saved.completed || []).map(Number).filter(id => id >= 1 && id <= 6))];
       saved.qrUnlocked = [...new Set((saved.qrUnlocked || []).map(Number).filter(id => qrRequiredStages.has(id)))];
       return saved;
     }
     const old = JSON.parse(localStorage.getItem('jinhan-quest-v1') || '{}');
-    return { ...defaultState, name: old.name || '', completed: (old.completed || []).filter(id => id <= 4), qrUnlocked: [] };
+    return { ...freshState(), name: old.name || '', completed: (old.completed || []).filter(id => id <= 4) };
   }
-  catch { return { ...defaultState }; }
+  catch { return freshState(); }
 }
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function awardHash(value) {
@@ -177,6 +178,7 @@ function complete(id) {
     state.awardCompletedAt = new Date().toISOString();
     state.awardCommentIndex = awardHash(`${state.name}|${state.awardCompletedAt.slice(0,10)}`) % awardComments.length;
   }
+  if (id === 6 && [1,2,3,4,5,6].every(stage => state.completed.includes(stage))) window.JinhanStats?.finish(state.statsRun);
   saveState();
 }
 function isSequenceReady(id) { return id === 1 || state.completed.includes(id - 1); }
@@ -234,7 +236,16 @@ function finishStageTransition() {
 }
 
 function home() {
-  return `<section class="screen">${topbar('')}<div class="hero"><div class="hero-orchard"><img src="assets/cover-drying-yard.webp" alt="一墩接著一墩的大墩山連峰，以及金漢柿餅金黃曬場" fetchpriority="high"></div><p class="eyebrow">新竹新埔・大墩山的九降風</p><h1>跟著風<br>去做柿餅</h1><p class="hero-copy">闖過六道體驗關卡，認識一顆柿子如何在陽光與九降風中，變成甜蜜的金黃柿餅。</p><div class="stack">${action(state.name ? `繼續冒險，${escapeHtml(state.name)}` : '開始遊戲', state.name ? 'map' : 'name')}${state.name ? `<button class="btn btn-secondary" id="restart">重新開始</button>` : ''}</div></div></section>`;
+  return `<section class="screen">${topbar('')}<div class="hero">
+    <div class="hero-orchard"><img src="assets/cover-drying-yard.webp" alt="一墩接著一墩的大墩山連峰，以及金漢柿餅金黃曬場" fetchpriority="high"></div>
+    <p class="eyebrow">新竹新埔・大墩山的九降風</p><h1>跟著風<br>去做柿餅</h1>
+    <p class="hero-copy">闖過六道體驗關卡，認識一顆柿子如何在陽光與九降風中，變成甜蜜的金黃柿餅。</p>
+    <aside id="experience-count" class="experience-count" aria-label="累計通關次數" hidden>
+      <span class="brand-fruit" aria-hidden="true"></span><div><strong data-count-text>每一次探索，都讓好柿持續發生</strong><span>下一位懂柿長，就是你！</span></div>
+    </aside>
+    <div class="stack">${action(state.name ? `繼續冒險，${escapeHtml(state.name)}` : '開始遊戲', state.name ? 'map' : 'name')}${state.name ? `<button class="btn btn-secondary" id="restart">重新開始</button>` : ''}</div>
+    <p class="stats-privacy">本站會匿名統計開始與通關次數，不傳送暱稱或照片。</p>
+  </div></section>`;
 }
 function nameScreen() {
   return `<section class="screen">${topbar('home')}<div class="hero"><div class="card"><p class="eyebrow">冒險準備</p><h2>小小柿農，你叫什麼名字？</h2><p class="hero-copy">完成闖關後，名字會出現在你的好柿達人證書上。</p><form id="name-form" class="stack"><div><label class="label" for="nickname">玩家暱稱</label><input class="text-input" id="nickname" maxlength="12" autocomplete="nickname" placeholder="例如：小柿子" value="${escapeHtml(state.name)}" required><div class="hint">最多 12 個字，不需填真實姓名。</div></div><button class="btn btn-primary" type="submit">出發闖關 →</button></form></div></div></section>`;
@@ -319,6 +330,7 @@ function render() {
   const views = { home, name: nameScreen, map: mapScreen, transition: transitionScreen, qr: qrUnlockScreen, stage1: quiz, stage2: harvestScreen, stage3: peelScreen, stage4: dryingScreen, stage5: varietyQuiz, stage6: photoScreen, end: endScreen };
   app.innerHTML = (views[route] || home)();
   bind();
+  if (route === 'home') window.JinhanStats?.refresh();
 }
 function bind() {
   app.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
@@ -326,8 +338,8 @@ function bind() {
   app.querySelectorAll('[data-map-node]').forEach(el => el.addEventListener('click', () => selectMapStage(Number(el.dataset.mapNode))));
   app.querySelectorAll('[data-complete]').forEach(el => el.addEventListener('click', () => startStageTransition(Number(el.dataset.complete))));
   document.querySelector('#transition-skip')?.addEventListener('click', finishStageTransition);
-  document.querySelector('#restart')?.addEventListener('click', () => { if (confirm('要清除暱稱與所有闖關進度嗎？')) { state = { ...defaultState }; saveState(); render(); } });
-  document.querySelector('#name-form')?.addEventListener('submit', e => { e.preventDefault(); const name = document.querySelector('#nickname').value.trim(); if (!name) return; state.name = name; saveState(); go('map'); });
+  document.querySelector('#restart')?.addEventListener('click', () => { if (confirm('要清除暱稱與所有闖關進度嗎？')) { state = freshState(); saveState(); render(); } });
+  document.querySelector('#name-form')?.addEventListener('submit', e => { e.preventDefault(); const name = document.querySelector('#nickname').value.trim(); if (!name) return; if (!state.name && !state.statsRun) state.statsRun = window.JinhanStats?.start() || null; state.name = name; saveState(); go('map'); });
   app.querySelectorAll('[data-answer]').forEach(el => el.addEventListener('click', answerQuiz));
   app.querySelectorAll('[data-variety-answer]').forEach(el => el.addEventListener('click', answerVariety));
   document.querySelector('#variety-next')?.addEventListener('click', nextVariety);
@@ -415,6 +427,7 @@ async function unlockWithTestPassword(event) {
   qrBusy = true;
   const unlockedStage = qrTargetStage;
   if (!state.qrUnlocked.includes(unlockedStage)) state.qrUnlocked.push(unlockedStage);
+  window.JinhanStats?.exclude(state.statsRun);
   saveState();
   setQrStatus(`密碼正確，第 ${unlockedStage} 關已解鎖！`, 'success');
   await stopQrScanner(false);
@@ -762,4 +775,6 @@ async function sharePhoto() {
   if (navigator.canShare?.({files:[file]})) { try { await navigator.share({title:'金漢好柿留影',text:'我完成金漢柿餅教育農園數位闖關！',files:[file]}); } catch {} }
   else { notify('這個瀏覽器不支援照片分享，請改用 Safari 或 Chrome 開啟網站'); }
 }
+window.JinhanStats?.resume(state.statsRun);
+if (state.statsRun) saveState();
 render();

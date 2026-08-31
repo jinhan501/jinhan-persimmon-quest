@@ -302,3 +302,9 @@ p { line-height:1.75; }
   .screen { min-height:712px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; } }
+/* Shared completion count; layout and game remain usable when the service is offline. */
+.experience-count { display:flex; align-items:center; justify-content:center; gap:12px; margin:20px 0; padding:15px 12px; background:#fff9e9; border:1px solid #e5c587; border-radius:20px; color:#314d30; }
+.experience-count[hidden] { display:none; }
+.experience-count strong { display:block; font-size:clamp(16px,4vw,20px); line-height:1.5; font-weight:800; }
+.experience-count div span { display:block; font-size:14px; line-height:1.7; color:#6d583a; font-weight:700; }
+.stats-privacy { margin:16px 0 0; font-size:12px; line-height:1.7; font-weight:600; color:#625b4b; }
