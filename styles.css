@@ -178,7 +178,7 @@ p { line-height:1.75; }
 .drying-stat strong { color:var(--persimmon-dark); font-size:1.05rem; }
 .quality-secret { display:inline-flex; align-items:center; gap:5px; color:var(--leaf-dark) !important; font-size:.85rem !important; }
 .weather-card { overflow:hidden; margin-bottom:14px; padding:0; }
-.weather-sky { position:relative; height:185px; overflow:hidden; display:grid; place-items:center; background:linear-gradient(#abd9dc 0 62%,#f6dc95); }
+.weather-sky { position:relative; height:213px; overflow:hidden; display:grid; place-items:center; background:linear-gradient(#abd9dc 0 62%,#f6dc95); }
 .weather-sky.rain { background:linear-gradient(#647c86,#b2b7ae); }
 .weather-sky.wind { background:linear-gradient(#9ed5d8,#f5d58b); }
 .weather-sky.turn { background:linear-gradient(#d4e4d6,#f2d6a0); }
@@ -210,6 +210,9 @@ p { line-height:1.75; }
 .weather-copy { padding:18px 20px 16px; }
 .weather-copy h3 { margin:3px 0 8px; font-size:1.2rem; }
 .weather-copy p { margin:0; color:var(--muted); font-size:.92rem; font-weight:700; }
+.weather-copy .situation-label { margin:0 0 8px; color:var(--persimmon-dark); }
+.weather-copy .situation-meta { margin:0 0 10px; color:var(--ink); font-size:1.2rem; font-weight:700; line-height:1.5; }
+.weather-copy .situation-copy { margin:0 0 10px; color:var(--ink); font-size:1.2rem; font-weight:700; line-height:1.6; }
 .tray-wrap { position:relative; min-height:256px; display:grid; place-items:center; margin:8px 0 2px; }
 .drying-tray { position:relative; width:238px; height:238px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:3px; place-items:center; padding:25px; border:8px double #929a9d; border-radius:50%; background-color:#d7dcdb; background-image:linear-gradient(rgba(102,111,113,.46) 1px,transparent 1px),linear-gradient(90deg,rgba(102,111,113,.46) 1px,transparent 1px); background-size:11px 11px; box-shadow:inset 0 0 0 3px #f4f6f5,0 12px 24px rgba(51,49,37,.2); }
 .drying-tray::after { content:"白鐵網狀圓盤"; position:absolute; right:-20px; bottom:-18px; padding:5px 9px; border-radius:9px; color:#516064; background:#eef2ef; border:1px solid #aab2b1; font-size:.7rem; font-weight:900; }
@@ -221,6 +224,31 @@ p { line-height:1.75; }
 @keyframes sun-dry { to { transform:translateY(-2px) rotate(2deg); filter:brightness(1.08) drop-shadow(0 5px 3px rgba(91,59,21,.25)); } }
 @keyframes knead-fruit { 50% { transform:scale(.9,.76); } }
 .bird-on-tray { position:absolute; z-index:5; width:126px; height:126px; object-fit:contain; right:-32px; top:15px; filter:drop-shadow(0 8px 6px rgba(40,40,26,.3)); animation:bird-hover 1s ease-in-out infinite alternate; }
+.weather-sky .tray-wrap { position:absolute; z-index:3; right:18px; bottom:28px; width:138px; height:138px; min-height:0; margin:0; }
+.weather-sky .drying-tray { position:absolute; top:0; left:0; transform:scale(.58); transform-origin:top left; }
+.weather-sky .drying-tray::after { content:none; }
+.weather-sky .weather-icon { position:absolute; left:8%; top:65px; font-size:3.8rem; }
+.weather-sky .process-message { position:absolute; z-index:4; left:12px; top:18px; width:calc(100% - 178px); padding:10px; box-shadow:none; }
+.weather-sky .process-message strong { font-size:.88rem; line-height:1.5; }
+.weather-sky .monsoon-badge { top:10px; left:10px; padding:6px 8px; font-size:.72rem; }
+.weather-sky .wind-explain { z-index:4; bottom:5px; gap:3px; font-size:.6rem; }
+.weather-sky .wind-explain span { padding:3px 4px; }
+.weather-sky .sun-disc { left:12%; right:auto; top:64px; width:58px; height:58px; }
+.weather-sky.bird .tray-wrap { right:34px; }
+.dew-garden { position:absolute; z-index:4; left:12px; bottom:0; width:calc(100% - 170px); max-width:230px; height:67px; }
+.dew-garden svg { display:block; width:100%; height:100%; }
+.dew-label { position:absolute; top:-13px; left:44%; padding:2px 8px; border-radius:9px; background:#f2fcff; color:#286176; font-size:.78rem; font-weight:900; }
+.weather-sky.turn .process-message { top:10px; padding:7px 9px; }
+.weather-sky.turn .process-message span { margin-bottom:2px; }
+.weather-sky.turn .process-message strong { font-size:.78rem; line-height:1.4; }
+.shrinking-fruit { position:absolute; z-index:3; left:12px; bottom:5px; width:calc(100% - 178px); height:110px; text-align:center; }
+.shrinking-fruit img { display:block; width:92px; height:88px; max-width:100%; object-fit:contain; margin:0 auto; transform-origin:center bottom; animation:fruit-shrink 3.2s ease-in-out infinite; filter:drop-shadow(0 5px 4px #76562844); }
+.shrinking-fruit span { display:block; color:#654421; font-size:.65rem; font-weight:800; white-space:nowrap; }
+@keyframes fruit-shrink { 0%,15%,100% { transform:scale(1,1); } 65%,85% { transform:scale(.72,.66); } }
+.bird-on-tray-second { left:-24px; right:auto; top:121px; width:108px; height:108px; animation:bird-peck 1.25s ease-in-out infinite alternate; }
+@keyframes bird-peck { from { transform:scaleX(-1) rotate(-8deg); } to { transform:scaleX(-1) rotate(9deg) translateY(5px); } }
+.bird-in-sky { position:absolute; z-index:4; left:27%; top:49px; width:74px; height:74px; object-fit:contain; filter:drop-shadow(0 5px 4px #324b3633); animation:bird-flight 2.8s ease-in-out infinite alternate; }
+@keyframes bird-flight { from { transform:translate(-10px,0) rotate(-8deg); } to { transform:translate(12px,-13px) rotate(5deg); } }
 .drying-actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
 .drying-action { min-height:62px; padding:10px 11px; border:2px solid #ead8b7; border-radius:15px; background:white; color:var(--ink); font-weight:900; text-align:left; line-height:1.35; }
 .drying-action.correct { border-color:#5d8d42; background:#eef7e8; }

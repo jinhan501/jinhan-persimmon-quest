@@ -22,11 +22,14 @@ let photoEffect = 'golden';
 const photoFrameImages = {};
 const photoFramePromises = {};
 let varietyIndex = 0;
+let answerAudioContext = null;
+let awardMusicPlayed = false;
+let awardMusicAudio = null;
 let peel = { mask: null, progressMask: null, image: null, coverImage: null, initialAlpha: 0, drawing: false, last: null, assistStep: 0, progress: 0, complete: false, ready: false, error: '' };
 let peelRunId = 0;
 let drying = { round: 0, dryness: 15, quality: 5, answered: false, finished: false };
 const dryingScenarioPool = [
-  { kind: 'wind', time: '上午', title: '陽光溫和，東北季風從海面吹來', desc: '乾爽的九降風正吹進新埔，削皮柿適合開始第一輪乾燥。', correct: 'outside', gain: 20, fact: '新竹秋季的九降風來自東北季風；日曬加上乾爽風力，能幫助柿子穩定脫水。' },
+  { kind: 'wind', time: '上午', title: '陽光溫和，強勁的東北季風從山谷間吹來', desc: '乾爽的九降風，降臨在新埔地區了。', correct: 'outside', gain: 20, fact: '新竹秋季的九降風來自東北季風；日曬加上乾爽風力，能幫助柿子穩定脫水。' },
   { kind: 'turn', time: '清晨', title: '果實開始變軟，兩面顏色不均', desc: '朝上的一面較乾，接觸網盤的一面仍保留較多水分。', correct: 'turn', gain: 18, fact: '翻面並輕壓整形，可讓水分慢慢往外移動，也能讓果實均勻轉成飽滿柔軟的爆漿柿餅。' },
   { kind: 'rain', time: '午後', title: '烏雲聚集，雨滴開始落下', desc: '空氣濕度快速升高；柿子若淋到雨、表面持續受潮，容易發霉或腐敗。', correct: 'shelter', gain: 5, fact: '遇雨要立刻收進棚內，避免淋雨與持續受潮；等環境恢復乾爽後，再繼續進行乾燥。' },
   { kind: 'wind', time: '雨後上午', title: '雨停轉晴，九降風再次吹起', desc: '天空放晴，東北季風帶來的空氣重新變得乾爽。', correct: 'outside', gain: 21, fact: '確認雨停、環境乾爽後，再移回戶外繼續日曬風乾。' },
@@ -201,6 +204,7 @@ function navigate(next) {
   clearTimeout(transitionTimer);
   transitionTimer = null;
   clearInterval(harvest.timer);
+  if (route === 'end' && next !== 'end') stopAwardMusic();
   if (route === 'qr' && next !== 'qr') void stopQrScanner();
   route = next;
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -232,6 +236,7 @@ function finishStageTransition() {
   clearTimeout(transitionTimer);
   transitionTimer = null;
   selectedMapStage = Math.min(6, (transitionStage || 1) + 1);
+  if (transitionDestination === 'end' && awardMusicAudio && awardMusicAudio.currentTime < 2.9) awardMusicAudio.currentTime = 3;
   navigate(transitionDestination);
 }
 
@@ -276,8 +281,8 @@ function qrUnlockScreen() {
   if (!stage) return mapScreen();
   const secureNotice = window.isSecureContext
     ? '相機只會用來辨識現場 QR Code，不會拍照或上傳影像。'
-    : '目前不是 HTTPS，手機瀏覽器可能封鎖相機；也可使用下方快速通關。';
-  return `<section class="screen">${topbar('map')}<div class="page-head"><p class="eyebrow">第 ${stage.id} 關・現場解鎖</p><h2>掃描指定位置的 QR Code</h2><p>找到「${stage.title}」的現場標示後再掃描，成功就會自動進入關卡。</p></div><div class="card qr-card"><div class="qr-stage-badge"><span>${stage.id}</span><div><strong>${stage.title}</strong><small>上一關已完成，等待現場驗證</small></div></div><div id="qr-reader" class="qr-reader" aria-label="QR Code 相機預覽"></div><div id="qr-status" class="qr-status" role="status" aria-live="polite">${secureNotice}</div><div class="stack qr-actions"><button id="qr-camera-start" class="btn btn-primary">開啟相機掃描</button><form id="qr-test-form" class="qr-test-form"><label for="qr-test-password">快速通關：</label><input id="qr-test-password" class="text-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="輸入密碼"><button class="qr-password-submit" type="submit">驗證</button></form><button class="btn btn-secondary" data-go="map">先回到地圖</button></div><div class="qr-help"><strong>掃不到時請檢查：</strong><span>允許瀏覽器使用相機、鏡頭擦乾淨、QR Code 完整入鏡，並保持約 15～30 公分距離。</span></div></div></section>`;
+    : '目前不是 HTTPS，手機瀏覽器可能封鎖相機；請改用正式 HTTPS 網址。';
+  return `<section class="screen">${topbar('map')}<div class="page-head"><p class="eyebrow">第 ${stage.id} 關・現場解鎖</p><h2>掃描指定位置的 QR Code</h2><p>找到「${stage.title}」的現場標示後再掃描，成功就會自動進入關卡。</p></div><div class="card qr-card"><div class="qr-stage-badge"><span>${stage.id}</span><div><strong>${stage.title}</strong><small>上一關已完成，等待現場驗證</small></div></div><div id="qr-reader" class="qr-reader" aria-label="QR Code 相機預覽"></div><div id="qr-status" class="qr-status" role="status" aria-live="polite">${secureNotice}</div><div class="stack qr-actions"><button id="qr-camera-start" class="btn btn-primary">開啟相機掃描</button><form id="qr-test-form" class="qr-test-form" hidden aria-hidden="true"><label for="qr-test-password">快速通關：</label><input id="qr-test-password" class="text-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="輸入密碼"><button class="qr-password-submit" type="submit">驗證</button></form><button class="btn btn-secondary" data-go="map">先回到地圖</button></div><div class="qr-help"><strong>掃不到時請檢查：</strong><span>允許瀏覽器使用相機、鏡頭擦乾淨、QR Code 完整入鏡，並保持約 15～30 公分距離。</span></div></div></section>`;
 }
 function quiz() {
   return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第一關・產地問答</p><h2>柿餅在哪裡加工的？</h2><p>柿餅的風土，從認識家鄉開始。</p></div><div class="card"><div class="question">你現在位於哪一個縣市／鄉鎮？</div><div class="answers">${['苗栗縣／公館鄉','新竹縣／新埔鎮','台中市／新社區','嘉義縣／番路鄉'].map((a,i) => `<button class="answer" data-answer="${i}">${String.fromCharCode(65+i)}　${a}</button>`).join('')}</div><div id="feedback" class="feedback"></div><button id="quiz-next" class="btn btn-primary" hidden>完成第一關 →</button></div></section>`;
@@ -296,14 +301,14 @@ function dryingScreen() {
   if (drying.finished) return dryingResult();
   const s = dryingScenarios[drying.round];
   const level = drying.dryness >= 70 ? 'high' : drying.dryness >= 40 ? 'mid' : 'low';
-  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第四關・九降風曬製</p><h2>看天氣，也要看果實</h2><p>每次挑戰情境都會重新排列，請依現場狀況選擇。</p></div><div class="drying-dashboard"><div class="drying-stat"><small>曬製進度</small><div class="progress-track"><div id="drying-fill" class="progress-fill" style="width:${drying.dryness}%"></div></div><strong id="drying-value">${drying.dryness}%</strong></div><div class="drying-stat"><small>柿餅品質</small><strong class="quality-secret">🔒 完成後揭曉</strong></div></div><div class="card weather-card"><div class="weather-sky ${s.kind}">${weatherScene(s)}</div><div class="weather-copy"><p class="eyebrow">${s.time}・隨機情境 ${drying.round + 1}/${dryingScenarios.length}</p><h3>${s.title}</h3><p>${s.desc}</p><div class="tray-wrap"><div id="drying-tray" class="drying-tray tray-state-${s.kind}" data-dryness="${level}" aria-label="白鐵網狀圓盤上的削皮柿">${'<i class="tray-fruit"></i>'.repeat(9)}${s.kind === 'bird' ? '<img class="bird-on-tray" src="assets/taiwan-barbet.webp" alt="靠近曬盤的五色鳥">' : ''}</div></div><div class="drying-actions"><button class="drying-action" data-dry-action="outside">☀️　移到戶外<br>日曬風乾</button><button class="drying-action" data-dry-action="turn">🤲　翻面、輕壓<br>整理形狀</button><button class="drying-action" data-dry-action="shelter">🏠　收進棚內<br>避雨乾燥</button><button class="drying-action" data-dry-action="bird">🐦　溫和趕鳥<br>保護曬盤</button></div><div id="drying-feedback" class="drying-feedback" role="status"></div><button id="drying-next" class="btn btn-primary" style="margin-top:12px" hidden>${drying.round === dryingScenarios.length - 1 ? '揭曉柿餅品質 →' : '進入下一個時段 →'}</button></div></div></section>`;
+  return `<section class="screen">${topbar()}<div class="page-head"><p class="eyebrow">第四關・九降風曬製</p><h2>看天氣，也要看果實</h2><p>每次挑戰情境都會重新排列，請依現場狀況選擇。</p></div><div class="drying-dashboard"><div class="drying-stat"><small>曬製進度</small><div class="progress-track"><div id="drying-fill" class="progress-fill" style="width:${drying.dryness}%"></div></div><strong id="drying-value">${drying.dryness}%</strong></div><div class="drying-stat"><small>柿餅品質</small><strong class="quality-secret">🔒 完成後揭曉</strong></div></div><div class="card weather-card"><div class="weather-sky ${s.kind}">${weatherScene(s)}<div class="tray-wrap"><div id="drying-tray" class="drying-tray tray-state-${s.kind}" data-dryness="${level}" aria-label="白鐵網狀圓盤上的削皮柿">${'<i class="tray-fruit"></i>'.repeat(9)}${s.kind === 'bird' ? '<img class="bird-on-tray" src="assets/taiwan-barbet.webp" alt="曬盤右側的五色鳥"><img class="bird-on-tray bird-on-tray-second" src="assets/taiwan-barbet.webp" alt="曬盤左側的五色鳥">' : ''}</div></div></div><div class="weather-copy"><p class="eyebrow situation-label">目前狀況：</p><p class="situation-meta">${({ wind: '天氣：晴', rain: '天氣：雨', humid: '環境：傍晚濕氣升高', turn: '觀察：果實狀態', bird: '狀況：五色鳥靠近' })[s.kind]}</p><h3 class="situation-copy">${s.title}</h3><p class="situation-copy">${s.desc}</p><div class="drying-actions"><button class="drying-action" data-dry-action="outside">☀️　移到戶外<br>日曬風乾</button><button class="drying-action" data-dry-action="turn">🤲　翻面、輕壓<br>整理形狀</button><button class="drying-action" data-dry-action="shelter">🏠　收進棚內<br>避雨乾燥</button><button class="drying-action" data-dry-action="bird">🐦　溫和趕鳥<br>保護曬盤</button></div><div id="drying-feedback" class="drying-feedback" role="status"></div><button id="drying-next" class="btn btn-primary" style="margin-top:12px" hidden>${drying.round === dryingScenarios.length - 1 ? '揭曉柿餅品質 →' : '進入下一個時段 →'}</button></div></div></section>`;
 }
 function weatherScene(s) {
   if (s.kind === 'wind') return '<span class="monsoon-badge">↙ 東北季風・九降風</span><i class="sun-disc"></i><i class="wind-stream w1"></i><i class="wind-stream w2"></i><i class="wind-stream w3"></i><div class="wind-explain"><span>東北季風</span><b>→</b><span>乾爽九降風</span><b>→</b><span>帶走水分</span></div>';
   if (s.kind === 'rain') return '<i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i><div class="rain-drops"></div><div class="weather-icon">🌧️</div>';
-  if (s.kind === 'bird') return '<span class="monsoon-badge">新竹縣縣鳥・五色鳥</span><i class="sun-disc"></i><i class="wind-stream w2"></i>';
-  if (s.kind === 'turn') return '<div class="process-message"><span>果實狀態</span><strong>表皮經過東北季風的吹拂，慢慢變乾了</strong></div>';
-  return '<i class="cloud c1"></i><i class="cloud c2"></i><div class="weather-icon">🌫️</div>';
+  if (s.kind === 'bird') return '<span class="monsoon-badge">新竹縣縣鳥・五色鳥</span><i class="sun-disc"></i><i class="wind-stream w2"></i><img class="bird-in-sky" src="assets/taiwan-barbet.webp" alt="空中飛翔的五色鳥">';
+  if (s.kind === 'turn') return '<div class="process-message"><span>果實狀態</span><strong>表皮經過東北季風的吹拂，慢慢變乾了</strong></div><div class="shrinking-fruit" role="img" aria-label="柿子失水後逐漸縮小的動畫"><img src="assets/juicy-persimmon-cake.webp" alt=""><span>水分減少・果實縮小</span></div>';
+  return '<i class="cloud c1"></i><i class="cloud c2"></i><div class="weather-icon">🌫️</div><div class="dew-garden"><span class="dew-label">露水</span><svg viewBox="0 0 220 70" role="img" aria-label="小花與草葉上凝結的露珠"><path d="M8 70Q3 42 0 36M12 70Q22 35 34 30M27 70Q22 46 17 40M56 70Q42 35 40 23M58 70Q65 44 79 38M97 70Q93 31 103 18M98 70Q112 38 123 35M149 70Q136 44 131 27M152 70Q165 36 177 27M190 70Q180 37 183 24M194 70Q206 48 219 42" fill="none" stroke="#547745" stroke-width="4" stroke-linecap="round"/><path d="M77 70V32M166 70V44" stroke="#60834a" stroke-width="3"/><g fill="#fff3d7" stroke="#dfb779"><circle cx="77" cy="24" r="6"/><circle cx="69" cy="32" r="6"/><circle cx="85" cy="32" r="6"/><circle cx="77" cy="39" r="6"/><circle cx="166" cy="37" r="5"/><circle cx="160" cy="44" r="5"/><circle cx="172" cy="44" r="5"/></g><g fill="#efbb48"><circle cx="77" cy="32" r="4"/><circle cx="166" cy="44" r="3"/></g><g fill="#bbecf6" stroke="#438fa6" stroke-width="1.4"><path d="M34 28q-10 12 0 13q10-1 0-13M104 15q-10 12 0 13q10-1 0-13M178 25q-10 12 0 13q10-1 0-13M43 41q-8 10 0 11q8-1 0-11"/></g><g fill="white"><circle cx="32" cy="36" r="2"/><circle cx="102" cy="23" r="2"/><circle cx="176" cy="33" r="2"/></g></svg></div>';
 }
 function dryingResult() {
   const passed = drying.dryness >= 75 && drying.quality >= 2;
@@ -331,6 +336,10 @@ function render() {
   app.innerHTML = (views[route] || home)();
   bind();
   if (route === 'home') window.JinhanStats?.refresh();
+  if (route === 'end' && !awardMusicPlayed) {
+    awardMusicPlayed = true;
+    setTimeout(() => { if (route === 'end') playAwardMusic(); }, 180);
+  }
 }
 function bind() {
   app.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
@@ -356,7 +365,10 @@ function bind() {
   document.querySelector('#photo-input')?.addEventListener('change', previewPhoto);
   app.querySelectorAll('[data-effect]').forEach(el => el.addEventListener('click', () => selectEffect(el.dataset.effect)));
   document.querySelector('#photo-share')?.addEventListener('click', sharePhoto);
-  document.querySelector('#photo-complete')?.addEventListener('click', () => startStageTransition(6, 'end'));
+  document.querySelector('#photo-complete')?.addEventListener('click', () => {
+    startAwardMusicSequence();
+    startStageTransition(6, 'end');
+  });
   document.querySelector('#qr-camera-start')?.addEventListener('click', startQrCamera);
   document.querySelector('#qr-test-form')?.addEventListener('submit', unlockWithTestPassword);
 }
@@ -378,11 +390,11 @@ function createQrScanner() {
 async function startQrCamera() {
   const button = document.querySelector('#qr-camera-start');
   if (!window.isSecureContext) {
-    setQrStatus('手機相機需要 HTTPS。請使用正式網址，或使用下方快速通關。', 'error');
+    setQrStatus('手機相機需要 HTTPS，請改用正式網址後再試。', 'error');
     return;
   }
   if (!navigator.mediaDevices?.getUserMedia) {
-    setQrStatus('這個瀏覽器不支援相機掃描，請改用 Chrome／Safari；也可使用下方快速通關。', 'error');
+    setQrStatus('這個瀏覽器不支援相機掃描，請改用 Chrome／Safari。', 'error');
     return;
   }
   if (button) button.disabled = true;
@@ -402,13 +414,13 @@ async function startQrCamera() {
     const name = error?.name || '';
     const message = String(error?.message || error || '');
     if (/NotAllowed|Permission|denied/i.test(`${name} ${message}`)) {
-      setQrStatus('相機權限被拒絕。請到瀏覽器網址列旁的權限設定允許相機，再重新整理；也可使用下方快速通關。', 'error');
+      setQrStatus('相機權限被拒絕。請到瀏覽器網址列旁的權限設定允許相機，再重新整理。', 'error');
     } else if (/NotFound|DevicesNotFound|Overconstrained/i.test(`${name} ${message}`)) {
-      setQrStatus('找不到可用的相機。請確認其他 App 沒有占用鏡頭；也可使用下方快速通關。', 'error');
+      setQrStatus('找不到可用的相機。請確認其他 App 沒有占用鏡頭。', 'error');
     } else if (message.includes('QR_LIBRARY_MISSING')) {
       setQrStatus('QR 掃描元件沒有載入，請確認網頁檔案完整後重新整理。', 'error');
     } else {
-      setQrStatus('相機啟動失敗。請重新整理後再試；也可使用下方快速通關。', 'error');
+      setQrStatus('相機啟動失敗。請重新整理後再試。', 'error');
     }
     if (button) button.disabled = false;
   }
@@ -488,13 +500,83 @@ function answerQuiz(e) {
 function answerVariety(e) {
   const q = varietyQuestions[varietyIndex];
   const chosen = Number(e.currentTarget.dataset.varietyAnswer);
+  const correct = chosen === q.correct;
   app.querySelectorAll('[data-variety-answer]').forEach((button, index) => {
     button.disabled = true;
     if (index === q.correct) button.classList.add('correct');
   });
-  if (chosen !== q.correct) e.currentTarget.classList.add('wrong');
-  document.querySelector('#variety-feedback').textContent = chosen === q.correct ? q.correctFeedback : q.wrongFeedback;
+  if (!correct) e.currentTarget.classList.add('wrong');
+  playAnswerSound(correct);
+  document.querySelector('#variety-feedback').textContent = correct ? q.correctFeedback : q.wrongFeedback;
   document.querySelector('#variety-next').hidden = false;
+}
+function playAnswerSound(correct) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    answerAudioContext ||= new AudioContextClass();
+    if (answerAudioContext.state === 'suspended') answerAudioContext.resume();
+    const start = answerAudioContext.currentTime + 0.02;
+    const master = answerAudioContext.createGain();
+    master.gain.setValueAtTime(correct ? 0.42 : 0.34, start);
+    master.connect(answerAudioContext.destination);
+    const playTone = ({ frequency, endFrequency = frequency, offset, duration, type, volume }) => {
+      const oscillator = answerAudioContext.createOscillator();
+      const gain = answerAudioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, start + offset);
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + offset + duration);
+      gain.gain.setValueAtTime(0.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(volume, start + offset + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + duration);
+      oscillator.connect(gain).connect(master);
+      oscillator.start(start + offset);
+      oscillator.stop(start + offset + duration + 0.02);
+    };
+    if (correct) {
+      [
+        { frequency: 659.25, offset: 0, duration: .18, type: 'sine', volume: .72 },
+        { frequency: 830.61, offset: .13, duration: .2, type: 'sine', volume: .76 },
+        { frequency: 987.77, offset: .27, duration: .22, type: 'sine', volume: .8 },
+        { frequency: 1318.51, offset: .42, duration: .42, type: 'sine', volume: .86 },
+        { frequency: 659.25, offset: .42, duration: .42, type: 'triangle', volume: .24 }
+      ].forEach(playTone);
+    } else {
+      [
+        { frequency: 190, endFrequency: 125, offset: 0, duration: .48, type: 'sawtooth', volume: .72 },
+        { frequency: 95, endFrequency: 70, offset: 0, duration: .48, type: 'square', volume: .22 },
+        { frequency: 155, endFrequency: 105, offset: .52, duration: .42, type: 'sawtooth', volume: .68 }
+      ].forEach(playTone);
+    }
+  } catch {}
+}
+function prepareAwardMusic() {
+  if (!awardMusicAudio) {
+    awardMusicAudio = new Audio('assets/award-fanfare.mp3');
+    awardMusicAudio.preload = 'auto';
+    awardMusicAudio.volume = .9;
+  }
+  return awardMusicAudio;
+}
+function startAwardMusicSequence() {
+  const audio = prepareAwardMusic();
+  stopAwardMusic();
+  audio.currentTime = 0;
+  awardMusicPlayed = true;
+  const started = audio.play();
+  started?.catch(() => { awardMusicPlayed = false; });
+}
+function playAwardMusic() {
+  const audio = prepareAwardMusic();
+  audio.currentTime = 3;
+  awardMusicPlayed = true;
+  const started = audio.play();
+  started?.catch(() => { awardMusicPlayed = false; });
+}
+function stopAwardMusic() {
+  if (!awardMusicAudio) return;
+  awardMusicAudio.pause();
+  awardMusicAudio.currentTime = 0;
 }
 function nextVariety() {
   if (varietyIndex < varietyQuestions.length - 1) { varietyIndex += 1; render(); }
@@ -635,12 +717,8 @@ function drawPeelBoard() {
     else { ctx.fillStyle='#735f42'; ctx.font='700 24px Microsoft JhengHei'; ctx.textAlign='center'; ctx.fillText(peel.error || '柿子載入中…',300,305); }
     return;
   }
-  if (peel.image) {
-    if (!peel.complete) {
-      ctx.save(); ctx.beginPath(); ctx.ellipse(300,320,184,160,0,0,Math.PI*2); ctx.clip();
-      ctx.drawImage(peel.image,55,55,490,490); ctx.restore();
-    } else ctx.drawImage(peel.image,55,55,490,490);
-  }
+  // Reveal the finished fruit only after peeling reaches the completion threshold.
+  if (peel.complete && peel.image) ctx.drawImage(peel.image,55,55,490,490);
   if (peel.mask && !peel.complete) ctx.drawImage(peel.mask,0,0);
   if (!peel.complete) {
     ctx.save(); ctx.strokeStyle='rgba(255,255,255,.72)'; ctx.lineWidth=5; ctx.setLineDash([12,14]);
