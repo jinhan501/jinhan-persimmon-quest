@@ -64,6 +64,26 @@ p { line-height:1.75; }
 .page-head { padding:18px 4px 14px; }
 .page-head p { margin:5px 0; color:var(--muted); font-weight:700; }
 .page-head .eyebrow { color:var(--persimmon-dark); font-weight:900; }
+.guide-screen { padding-bottom:18px; }
+.guide-heading { padding:20px 2px 14px; text-align:center; }
+.guide-heading .eyebrow { margin-bottom:10px; }
+.guide-heading h1 { color:var(--leaf-dark); font-size:clamp(2.2rem,10vw,3rem); font-weight:950; }
+.guide-unlock { display:grid; gap:7px; margin:0 0 14px; padding:15px 17px; border:1px solid #e8ca88; border-radius:18px; background:#fff3d5; color:var(--ink); }
+.guide-unlock strong { color:var(--persimmon-dark); font-size:1.12rem; }
+.guide-unlock span { font-size:.88rem; font-weight:700; line-height:1.6; }
+.guide-stage-list { display:grid; gap:10px; }
+.guide-stage { display:grid; grid-template-columns:44px minmax(0,1fr); align-items:start; gap:12px; padding:14px; border:1px solid rgba(72,107,53,.13); border-radius:18px; background:rgba(255,251,239,.94); box-shadow:0 5px 16px rgba(72,55,34,.07); }
+.guide-stage-number { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; color:white; background:var(--persimmon); font-size:1.08rem; font-weight:950; box-shadow:inset -3px -3px 0 rgba(139,54,20,.12); }
+.guide-stage-copy h3 { margin:2px 0 4px; color:var(--leaf-dark); font-size:1rem; line-height:1.4; font-weight:950; }
+.guide-stage-copy p { margin:0; color:var(--muted); font-size:.84rem; line-height:1.6; font-weight:650; }
+.guide-stage-warning { border:1px solid rgba(72,107,53,.13); background:rgba(255,251,239,.94); }
+.guide-stage-warning .guide-stage-number { background:var(--persimmon); }
+.guide-warning { display:block; margin-top:8px; color:#a52d20; font-size:.92rem; line-height:1.55; font-weight:950; }
+.guide-footer { display:flex; align-items:center; justify-content:center; gap:8px; margin:15px 0 12px; color:var(--leaf-dark); text-align:center; }
+.guide-footer > span { font-size:1.4rem; }
+.guide-footer p { margin:0; font-size:.9rem; font-weight:850; }
+.guide-actions { display:grid; gap:9px; }
+.guide-back { min-height:46px; background:rgba(255,255,255,.64); }
 .progress-summary { display:flex; justify-content:space-between; align-items:center; margin:6px 0 18px; }
 .progress-track { height:9px; flex:1; background:rgba(255,255,255,.7); border-radius:9px; overflow:hidden; margin-right:12px; }
 .progress-fill { height:100%; background:linear-gradient(90deg,var(--persimmon),#f0aa39); transition:width .35s; }

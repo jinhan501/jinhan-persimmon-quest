@@ -255,6 +255,22 @@ function home() {
 function nameScreen() {
   return `<section class="screen">${topbar('home')}<div class="hero"><div class="card"><p class="eyebrow">冒險準備</p><h2>小小柿農，你叫什麼名字？</h2><p class="hero-copy">完成闖關後，名字會出現在你的好柿達人證書上。</p><form id="name-form" class="stack"><div><label class="label" for="nickname">玩家暱稱</label><input class="text-input" id="nickname" maxlength="12" autocomplete="nickname" placeholder="例如：小柿子" value="${escapeHtml(state.name)}" required><div class="hint">最多 12 個字，不需填真實姓名。</div></div><button class="btn btn-primary" type="submit">出發闖關 →</button></form></div></div></section>`;
 }
+function instructionsScreen() {
+  const guideStages = [
+    ['1', '產地問答', '回答產地問題，認識新埔柿餅的家鄉。'],
+    ['2', '前往「柿子園」尋找 QR Code', '掃描現場關卡牌，解鎖手機採收遊戲。', '重要提醒：採收只在手機畫面中進行，請勿採摘樹上的柿子。'],
+    ['3', '前往「削皮區」尋找 QR Code', '掃描現場關卡牌，解鎖旋轉削皮體驗。'],
+    ['4', '前往「曬柿場」尋找 QR Code', '掃描現場關卡牌，解鎖九降風曬柿餅體驗。'],
+    ['5', '前往「櫃台」尋找 QR Code', '掃描現場關卡牌，解鎖柿子知識問答。'],
+    ['6', '製作紀念明信片', '拍照或選擇照片、套用相框，再分享或儲存留念。'],
+  ];
+  const guideRows = guideStages.map(([number, title, description, warning]) => `
+    <article class="guide-stage ${warning ? 'guide-stage-warning' : ''}">
+      <span class="guide-stage-number" aria-hidden="true">${number}</span>
+      <div class="guide-stage-copy"><h3>第 ${number} 關｜${title}</h3><p>${description}</p>${warning ? `<strong class="guide-warning">⚠ ${warning}</strong>` : ''}</div>
+    </article>`).join('');
+  return `<section class="screen guide-screen">${topbar('name')}<div class="guide-heading"><p class="eyebrow">出發前先看一下</p><h1>玩法說明</h1></div><div class="guide-unlock"><strong>怎麼開始？</strong><span>依序完成六關。第二至第五關須到指定位置，掃描現場關卡 QR Code 才能解鎖。</span></div><div class="guide-stage-list" aria-label="六個關卡玩法">${guideRows}</div><div class="guide-footer"><span aria-hidden="true">🍁</span><p>準備好了，就跟著地圖開始農園冒險吧！</p><span aria-hidden="true">🍂</span></div><div class="guide-actions"><button class="btn btn-primary" data-go="map">了解，開始闖關 →</button><button class="btn btn-secondary guide-back" data-go="name">返回修改暱稱</button></div></section>`;
+}
 function mapScreen() {
   const pct = state.completed.length / 6 * 100;
   const selectedId = selectedMapStage || currentMapStage();
@@ -332,7 +348,7 @@ function endScreen() {
 }
 function escapeHtml(value='') { return value.replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function render() {
-  const views = { home, name: nameScreen, map: mapScreen, transition: transitionScreen, qr: qrUnlockScreen, stage1: quiz, stage2: harvestScreen, stage3: peelScreen, stage4: dryingScreen, stage5: varietyQuiz, stage6: photoScreen, end: endScreen };
+  const views = { home, name: nameScreen, instructions: instructionsScreen, map: mapScreen, transition: transitionScreen, qr: qrUnlockScreen, stage1: quiz, stage2: harvestScreen, stage3: peelScreen, stage4: dryingScreen, stage5: varietyQuiz, stage6: photoScreen, end: endScreen };
   app.innerHTML = (views[route] || home)();
   bind();
   if (route === 'home') window.JinhanStats?.refresh();
@@ -348,7 +364,7 @@ function bind() {
   app.querySelectorAll('[data-complete]').forEach(el => el.addEventListener('click', () => startStageTransition(Number(el.dataset.complete))));
   document.querySelector('#transition-skip')?.addEventListener('click', finishStageTransition);
   document.querySelector('#restart')?.addEventListener('click', () => { if (confirm('要清除暱稱與所有闖關進度嗎？')) { state = freshState(); saveState(); render(); } });
-  document.querySelector('#name-form')?.addEventListener('submit', e => { e.preventDefault(); const name = document.querySelector('#nickname').value.trim(); if (!name) return; if (!state.name && !state.statsRun) state.statsRun = window.JinhanStats?.start() || null; state.name = name; saveState(); go('map'); });
+  document.querySelector('#name-form')?.addEventListener('submit', e => { e.preventDefault(); const name = document.querySelector('#nickname').value.trim(); if (!name) return; if (!state.name && !state.statsRun) state.statsRun = window.JinhanStats?.start() || null; state.name = name; saveState(); go('instructions'); });
   app.querySelectorAll('[data-answer]').forEach(el => el.addEventListener('click', answerQuiz));
   app.querySelectorAll('[data-variety-answer]').forEach(el => el.addEventListener('click', answerVariety));
   document.querySelector('#variety-next')?.addEventListener('click', nextVariety);
